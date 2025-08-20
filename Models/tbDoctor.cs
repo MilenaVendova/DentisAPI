@@ -59,6 +59,23 @@ namespace DentisAPI.Models
                 return _SelectCommand;
             }
         }
+        private SqlCommand? _SelectCommandByID;
+        private SqlCommand SelectCommandByID
+        {
+            get
+            {
+                if (_SelectCommandByID is null)
+                {
+                    _SelectCommandByID = new SqlCommand();
+                    _SelectCommandByID.Connection = _Connection.cnn;
+                    _SelectCommandByID.CommandTimeout = ConnectionManager.CommandTimeout;
+                    _SelectCommandByID.CommandText = "sp_tbDoctor_S_ByDoctorID";
+                    _SelectCommandByID.CommandType = CommandType.StoredProcedure;
+                    _SelectCommandByID.Parameters.Add(new SqlParameter("@DoctorID", SqlDbType.Int, 4, ParameterDirection.Input, 0, 0, "DoctorID", DataRowVersion.Current, false, null, "", "", ""));
+                }
+                return _SelectCommandByID;
+            }
+        }
         public async Task<int> Fill(CancellationToken ct)
         {
             ConnectionState cs = _Connection.cnn.State;
@@ -70,6 +87,40 @@ namespace DentisAPI.Models
                     await _Connection.cnn.OpenAsync(ct);
                 }
                 SqlDataReader dReader = await SelectCommand.ExecuteReaderAsync(ct);
+                while (await dReader.ReadAsync(ct))
+                {
+                    tbDoctorRow dr = new tbDoctorRow();
+                    dr.SetDataFromSQL(dReader);
+                    Add(dr);
+                    i += 1;
+                }
+                await dReader.CloseAsync();
+                return i;
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                if (cs == ConnectionState.Closed)
+                {
+                    await _Connection.cnn.CloseAsync();
+                }
+            }
+        }
+        public async Task<int> FillByID(int DoctorID, CancellationToken ct)
+        {
+            ConnectionState cs = _Connection.cnn.State;
+            try
+            {
+                int i = 0;
+                if (cs != ConnectionState.Open)
+                {
+                    await _Connection.cnn.OpenAsync(ct);
+                }
+                SelectCommandByID.Parameters[0].Value = DoctorID;
+                SqlDataReader dReader = await SelectCommandByID.ExecuteReaderAsync(ct);
                 while (await dReader.ReadAsync(ct))
                 {
                     tbDoctorRow dr = new tbDoctorRow();
@@ -211,12 +262,12 @@ namespace DentisAPI.Models
                     _DeleteCommand.CommandTimeout = ConnectionManager.CommandTimeout;
                     _DeleteCommand.CommandText = "exec sp_tbDoctor_D @Original_DoctorID";
                     _DeleteCommand.CommandType = CommandType.Text;
-                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_DoctorID", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0,"DoctorID", DataRowVersion.Original, false, null, "", "", ""));
-                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Name", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0,"Name", DataRowVersion.Original, false, null, "", "", ""));
-                    _DeleteCommand.Parameters.Add(new SqlParameter("@IsNull_NickName", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0,"NickName", DataRowVersion.Original, true, null, "", "", ""));
-                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_NickName", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0,"NickName", DataRowVersion.Original, false, null, "", "", ""));
-                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Email", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0,"Email", DataRowVersion.Original, false, null, "", "", ""));
-                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Phone", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0,"Phone", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_DoctorID", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0, "DoctorID", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Name", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Name", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@IsNull_NickName", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Original, true, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_NickName", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Email", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Email", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Phone", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Phone", DataRowVersion.Original, false, null, "", "", ""));
                 }
                 return _DeleteCommand;
             }

@@ -29,17 +29,16 @@ namespace DentisAPI.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> FillDoctor(int id, CancellationToken ct)
+        public async Task<IActionResult> FillByID(int id, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection("sa");
             try
             {
                 tbDoctor tb = new(mc!);
-                await tb.Fill(ct);
-                tbDoctorRow? result = tb.FirstOrDefault(d => d.DoctorID == id);
-                if (result != null)
+                await tb.FillByID(id, ct);
+                if (tb.Count == 1)
                 {
-                    return Ok(result);
+                    return Ok(tb[0]);
                 }
                 else
                 {
