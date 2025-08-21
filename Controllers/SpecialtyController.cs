@@ -1,95 +1,277 @@
-﻿using DentisAPI.Models;
-using DentisAPI.Services;
-using Microsoft.AspNetCore.Mvc;
-
-namespace DentisAPI.Controllers
+﻿using DentisAPI.Services;
+using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading;
+using System.Threading.Tasks;
+namespace DentisAPI.Models
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class SpecialtyController : Controller
+    public class tbDoctorRow
     {
-        //using Microsoft.AspNetCore.Authorization;
-        //[Authorize]
-
-        [HttpGet]
-        public async Task<IActionResult> Fill(CancellationToken ct)
+        public int DoctorID { get; set; }
+        public string? Name { get; set; }
+        public string? NickName { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public DateTime StartDate { get; set; }
+        public void SetDataFromSQL(SqlDataReader dReader)
         {
-            MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
+            this.DoctorID = (int)dReader["DoctorID"];
+            this.Name = (string)dReader["Name"];
+            this.NickName = (dReader["NickName"] != DBNull.Value) ? (string)dReader["NickName"] : null;
+            this.Email = (string)dReader["Email"];
+            this.Phone = (string)dReader["Phone"];
+            this.StartDate = (DateTime)dReader["StartDate"];
+        }
+        public object GetData(string Name)
+        {
+            return Name switch
+            {
+                "DoctorID" => this.DoctorID,
+                "Name" => (this.Name != null) ? this.Name : DBNull.Value,
+                "NickName" => (this.NickName != null) ? this.NickName : DBNull.Value,
+                "Email" => (this.Email != null) ? this.Email : DBNull.Value,
+                "Phone" => (this.Phone != null) ? this.Phone : DBNull.Value,
+                "StartDate" => this.StartDate,
+                _ => DBNull.Value,
+            };
+        }
+    }
+    public class tbDoctor : List<tbDoctorRow>
+    {
+        private readonly MyConnection _Connection;
+        public tbDoctor(MyConnection mc) : base()
+        {
+            _Connection = mc;
+        }
+        private SqlCommand? _SelectCommand;
+        private SqlCommand SelectCommand
+        {
+            get
+            {
+                if (_SelectCommand is null)
+                {
+                    _SelectCommand = new SqlCommand();
+                    _SelectCommand.Connection = _Connection.cnn;
+                    _SelectCommand.CommandTimeout = ConnectionManager.CommandTimeout;
+                    _SelectCommand.CommandText = "sp_tbDoctor_S";
+                    _SelectCommand.CommandType = CommandType.StoredProcedure;
+                }
+                return _SelectCommand;
+            }
+        }
+        public async Task<int> Fill(CancellationToken ct)
+        {
+            ConnectionState cs = _Connection.cnn.State;
             try
             {
-                tbSpecialty tb = new(mc!);
-                await tb.Fill(ct);
-                return Ok(tb);
+                int i = 0;
+                if (cs != ConnectionState.Open)
+                {
+                    await _Connection.cnn.OpenAsync(ct);
+                }
+                SqlDataReader dReader = await SelectCommand.ExecuteReaderAsync(ct);
+                while (await dReader.ReadAsync(ct))
+                {
+                    tbDoctorRow dr = new tbDoctorRow();
+                    dr.SetDataFromSQL(dReader);
+                    Add(dr);
+                    i += 1;
+                }
+                await dReader.CloseAsync();
+                return i;
             }
-            catch (System.Exception ex)
+            catch
             {
-                return BadRequest(Json(ex.Message));
+                throw;
             }
             finally
             {
-                mc?.Release();
+                if (cs == ConnectionState.Closed)
+                {
+                    await _Connection.cnn.CloseAsync();
+                }
             }
         }
-        [HttpPut]
-        public async Task<IActionResult> Insert(tbSpecialtyRow drCurrent, CancellationToken ct)
+        private SqlCommand? _InsertCommand;
+        private SqlCommand InsertCommand
         {
-            MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
+            get
+            {
+                if (_InsertCommand is null)
+                {
+                    _InsertCommand = new SqlCommand();
+                    _InsertCommand.Connection = _Connection.cnn;
+                    _InsertCommand.CommandTimeout = ConnectionManager.CommandTimeout;
+                    _InsertCommand.CommandText = "DECLARE @RETURN_VALUE INT; exec @RETURN_VALUE = sp_tbDoctor_I  @Name, @NickName, @Email, @Phone, @StartDate; SELECT DoctorID , Name , NickName , Email , Phone , StartDate FROM tbDoctor WHERE DoctorID = @RETURN_VALUE";
+                    _InsertCommand.CommandType = CommandType.Text;
+                    _InsertCommand.Parameters.Add(new SqlParameter("@Name", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Name", DataRowVersion.Current, false, null, "", "", ""));
+                    _InsertCommand.Parameters.Add(new SqlParameter("@NickName", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Current, false, null, "", "", ""));
+                    _InsertCommand.Parameters.Add(new SqlParameter("@Email", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Email", DataRowVersion.Current, false, null, "", "", ""));
+                    _InsertCommand.Parameters.Add(new SqlParameter("@Phone", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Phone", DataRowVersion.Current, false, null, "", "", ""));
+                    _InsertCommand.Parameters.Add(new SqlParameter("@StartDate", SqlDbType.Date, 0, ParameterDirection.Input, 0, 0, "StartDate", DataRowVersion.Current, false, null, "", "", ""));
+                }
+                return _InsertCommand;
+            }
+        }
+        public async Task<tbDoctorRow> Insert(tbDoctorRow drCurrent, CancellationToken ct)
+        {
+            ConnectionState cs = _Connection.cnn.State;
             try
             {
-                tbSpecialty tb = new(mc!);
-                return Ok(await tb.Insert(drCurrent, ct));
+                SetCommandParameterValue(InsertCommand, null, drCurrent);
+                if (cs != ConnectionState.Open)
+                {
+                    await _Connection.cnn.OpenAsync(ct);
+                }
+                SqlDataReader dReader = await InsertCommand.ExecuteReaderAsync(ct);
+                while (await dReader.ReadAsync(ct))
+                {
+                    drCurrent.SetDataFromSQL(dReader);
+                }
+                await dReader.CloseAsync();
+                return drCurrent;
             }
-            catch (System.Exception ex)
+            catch
             {
-                return BadRequest(Json(ex.Message));
+                throw;
             }
             finally
             {
-                mc?.Release();
+                if (cs == ConnectionState.Closed)
+                {
+                    await _Connection.cnn.CloseAsync();
+                }
             }
         }
-        public class tbSpecialtyRowUpdate
+        private SqlCommand? _UpdateCommand;
+        private SqlCommand UpdateCommand
         {
-            public tbSpecialtyRow? Original { get; set; }
-            public tbSpecialtyRow? Current { get; set; }
+            get
+            {
+                if (_UpdateCommand is null)
+                {
+                    _UpdateCommand = new SqlCommand();
+                    _UpdateCommand.Connection = _Connection.cnn;
+                    _UpdateCommand.CommandTimeout = ConnectionManager.CommandTimeout;
+                    _UpdateCommand.CommandText = "exec sp_tbDoctor_U @DoctorID, @Name, @Original_Name, @NickName, @Original_NickName, @Email, @Original_Email, @Phone, @Original_Phone, @StartDate, @Original_StartDate; SELECT DoctorID , Name , NickName , Email , Phone , StartDate FROM tbDoctor WHERE DoctorID = @DoctorID";
+                    _UpdateCommand.CommandType = CommandType.Text;
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Name", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Name", DataRowVersion.Current, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@NickName", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Current, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Email", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Email", DataRowVersion.Current, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Phone", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Phone", DataRowVersion.Current, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@StartDate", SqlDbType.Date, 0, ParameterDirection.Input, 0, 0, "StartDate", DataRowVersion.Current, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Original_DoctorID", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0, "DoctorID", DataRowVersion.Original, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Original_Name", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Name", DataRowVersion.Original, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@IsNull_NickName", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Original, true, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Original_NickName", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Original, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Original_Email", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Email", DataRowVersion.Original, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Original_Phone", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Phone", DataRowVersion.Original, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@Original_StartDate", SqlDbType.Date, 0, ParameterDirection.Input, 0, 0, "StartDate", DataRowVersion.Original, false, null, "", "", ""));
+                    _UpdateCommand.Parameters.Add(new SqlParameter("@DoctorID", SqlDbType.Int, 4, ParameterDirection.Input, 0, 0, "DoctorID", DataRowVersion.Current, false, null, "", "", ""));
+                }
+                return _UpdateCommand;
+            }
         }
-        [HttpPost]
-        public async Task<IActionResult> Update(tbSpecialtyRowUpdate dr, CancellationToken ct)
+        public async Task<tbDoctorRow> Update(tbDoctorRow drOriginal, tbDoctorRow drCurrent, CancellationToken ct)
         {
-            MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
+            ConnectionState cs = _Connection.cnn.State;
             try
             {
-                tbSpecialty tb = new(mc!);
-                return Ok(await tb.Update(dr.Original!, dr.Current!, ct));
+                SetCommandParameterValue(UpdateCommand, drOriginal, drCurrent);
+                if (cs != ConnectionState.Open)
+                {
+                    await _Connection.cnn.OpenAsync(ct);
+                }
+                SqlDataReader dReader = await UpdateCommand.ExecuteReaderAsync(ct);
+                while (await dReader.ReadAsync(ct))
+                {
+                    drCurrent.SetDataFromSQL(dReader);
+                }
+                await dReader.CloseAsync();
+                return drCurrent;
             }
-            catch (System.Exception ex)
+            catch
             {
-                return BadRequest(Json(ex.Message));
+                throw;
             }
             finally
             {
-                mc?.Release();
+                if (cs == ConnectionState.Closed)
+                {
+                    await _Connection.cnn.CloseAsync();
+                }
             }
         }
-        [HttpDelete]
-        public async Task<IActionResult> Delete(tbSpecialtyRow drOriginal, CancellationToken ct)
+        private SqlCommand? _DeleteCommand;
+        private SqlCommand DeleteCommand
         {
-            MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
+            get
+            {
+                if (_DeleteCommand is null)
+                {
+                    _DeleteCommand = new SqlCommand();
+                    _DeleteCommand.Connection = _Connection.cnn;
+                    _DeleteCommand.CommandTimeout = ConnectionManager.CommandTimeout;
+                    _DeleteCommand.CommandText = "exec sp_tbDoctor_D @Original_DoctorID";
+                    _DeleteCommand.CommandType = CommandType.Text;
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_DoctorID", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0, "DoctorID", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Name", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Name", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@IsNull_NickName", SqlDbType.Int, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Original, true, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_NickName", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "NickName", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Email", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Email", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_Phone", SqlDbType.VarChar, 0, ParameterDirection.Input, 0, 0, "Phone", DataRowVersion.Original, false, null, "", "", ""));
+                    _DeleteCommand.Parameters.Add(new SqlParameter("@Original_StartDate", SqlDbType.Date, 0, ParameterDirection.Input, 0, 0, "StartDate", DataRowVersion.Original, false, null, "", "", ""));
+                }
+                return _DeleteCommand;
+            }
+        }
+        public async Task<int> Delete(tbDoctorRow drOriginal, CancellationToken ct)
+        {
+            ConnectionState cs = _Connection.cnn.State;
             try
             {
-                tbSpecialty tb = new(mc!);
-                await tb.Delete(drOriginal, ct);
-                return Ok();
+                SetCommandParameterValue(DeleteCommand, drOriginal, null);
+                if (cs != ConnectionState.Open)
+                {
+                    await _Connection.cnn.OpenAsync(ct);
+                }
+                int i = await DeleteCommand.ExecuteNonQueryAsync(ct);
+                return i;
             }
-            catch (System.Exception ex)
+            catch
             {
-                return BadRequest(Json(ex.Message));
+                throw;
             }
             finally
             {
-                mc?.Release();
+                if (cs == ConnectionState.Closed)
+                {
+                    await _Connection.cnn.CloseAsync();
+                }
             }
         }
-
+        private static void SetCommandParameterValue(SqlCommand cmd, tbDoctorRow? drOriginal, tbDoctorRow? drCurrent)
+        {
+            foreach (SqlParameter p in cmd.Parameters)
+            {
+                if (!p.SourceColumnNullMapping)
+                {
+                    if (p.SourceVersion == DataRowVersion.Original)
+                    {
+                        p.Value = drOriginal!.GetData(p.SourceColumn);
+                    }
+                    else
+                    {
+                        p.Value = drCurrent!.GetData(p.SourceColumn);
+                    }
+                }
+                else
+                {
+                    p.Value = DBNull.Value;
+                }
+            }
+        }
     }
 }
