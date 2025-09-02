@@ -6,9 +6,11 @@ namespace DentisAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SpecialtyController : Controller
+    public class DoctorController : Controller
     {
         //using Microsoft.AspNetCore.Authorization;
+        //[Route("api/[controller]")]
+        //[ApiController]
         //[Authorize]
 
         [HttpGet]
@@ -17,7 +19,7 @@ namespace DentisAPI.Controllers
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
             try
             {
-                tbSpecialty tb = new(mc!);
+                tbDoctor tb = new(mc!);
                 await tb.Fill(ct);
                 return Ok(tb);
             }
@@ -31,12 +33,12 @@ namespace DentisAPI.Controllers
             }
         }
         [HttpPut]
-        public async Task<IActionResult> Insert(tbSpecialtyRow drCurrent, CancellationToken ct)
+        public async Task<IActionResult> Insert(tbDoctorRow drCurrent, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
             try
             {
-                tbSpecialty tb = new(mc!);
+                tbDoctor tb = new(mc!);
                 return Ok(await tb.Insert(drCurrent, ct));
             }
             catch (System.Exception ex)
@@ -48,18 +50,18 @@ namespace DentisAPI.Controllers
                 mc?.Release();
             }
         }
-        public class tbSpecialtyRowUpdate
+        public class tbDoctorRowUpdate
         {
-            public tbSpecialtyRow? Original { get; set; }
-            public tbSpecialtyRow? Current { get; set; }
+            public tbDoctorRow? Original { get; set; }
+            public tbDoctorRow? Current { get; set; }
         }
         [HttpPost]
-        public async Task<IActionResult> Update(tbSpecialtyRowUpdate dr, CancellationToken ct)
+        public async Task<IActionResult> Update(tbDoctorRowUpdate dr, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
             try
             {
-                tbSpecialty tb = new(mc!);
+                tbDoctor tb = new(mc!);
                 return Ok(await tb.Update(dr.Original!, dr.Current!, ct));
             }
             catch (System.Exception ex)
@@ -72,12 +74,12 @@ namespace DentisAPI.Controllers
             }
         }
         [HttpDelete]
-        public async Task<IActionResult> Delete(tbSpecialtyRow drOriginal, CancellationToken ct)
+        public async Task<IActionResult> Delete(tbDoctorRow drOriginal, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
             try
             {
-                tbSpecialty tb = new(mc!);
+                tbDoctor tb = new(mc!);
                 await tb.Delete(drOriginal, ct);
                 return Ok();
             }
