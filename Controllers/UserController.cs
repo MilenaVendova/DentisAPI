@@ -32,7 +32,7 @@ namespace DentisAPI.Controllers
                 mc?.Release();
             }
         }
-        [HttpPut]
+        [HttpPost]
         public async Task<IActionResult> Insert(tbUserRow drCurrent, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
@@ -55,7 +55,7 @@ namespace DentisAPI.Controllers
             public tbUserRow? Original { get; set; }
             public tbUserRow? Current { get; set; }
         }
-        [HttpPost]
+        [HttpPut]
         public async Task<IActionResult> Update(tbUserRowUpdate dr, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);

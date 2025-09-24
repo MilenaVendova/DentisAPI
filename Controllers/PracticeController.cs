@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DentisAPI.Controllers
 {
-    //[Route("api/[controller]")]
-    //[ApiController]
+    [Route("api/[controller]")]
+    [ApiController]
     public class PracticeController : Controller
     {
         //using Microsoft.AspNetCore.Authorization;
@@ -31,7 +31,28 @@ namespace DentisAPI.Controllers
                 mc?.Release();
             }
         }
-        [HttpPut]
+
+        [HttpGet]
+        [Route("PracticeInfo")]
+        public async Task<IActionResult> FillInfo(CancellationToken ct)
+        {
+            MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
+            try
+            {
+                rsp_PracticeInfo tb = new(mc!);
+                await tb.Fill(ct);
+                return Ok(tb);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(Json(ex.Message));
+            }
+            finally
+            {
+                mc?.Release();
+            }
+        }
+        [HttpPost]
         public async Task<IActionResult> Insert(tbPracticeRow drCurrent, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
@@ -54,7 +75,7 @@ namespace DentisAPI.Controllers
             public tbPracticeRow? Original { get; set; }
             public tbPracticeRow? Current { get; set; }
         }
-        [HttpPost]
+        [HttpPut]
         public async Task<IActionResult> Update(tbPracticeRowUpdate dr, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);

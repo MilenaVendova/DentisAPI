@@ -31,7 +31,7 @@ namespace DentisAPI.Controllers
                 mc?.Release();
             }
         }
-        [HttpPut]
+        [HttpPost]
         public async Task<IActionResult> Insert(tbMaterial_ItemTypeRow drCurrent, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
@@ -54,7 +54,7 @@ namespace DentisAPI.Controllers
             public tbMaterial_ItemTypeRow? Original { get; set; }
             public tbMaterial_ItemTypeRow? Current { get; set; }
         }
-        [HttpPost]
+        [HttpPut]
         public async Task<IActionResult> Update(tbMaterial_ItemTypeRowUpdate dr, CancellationToken ct)
         {
             MyConnection? mc = ConnectionManager.GetConnection(User!.Identity!.Name!);
